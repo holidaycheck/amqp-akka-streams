@@ -1,7 +1,7 @@
 import sbt._
 
 lazy val resolvers =  Seq(
-  "Sonatype OSS Releases" at "http://oss.sonatype.org/content/repositories/releases/",
+  Opts.resolver.sonatypeReleases,
   Resolver.jcenterRepo
 )
 
@@ -26,7 +26,6 @@ lazy val libraryDependencies = {
   )
 }
 
-
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
   .settings(
@@ -38,9 +37,35 @@ lazy val root = (project in file("."))
     Keys.scalacOptions ++= Seq("-deprecation", "-target:jvm-1.8"),
     Keys.javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-unchecked", "-deprecation", "-feature"),
     Keys.resolvers := resolvers,
-    Keys.publishMavenStyle := true,
     Keys.concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
     Keys.libraryDependencies := libraryDependencies,
-    Keys.credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+    Keys.credentials += Credentials(Path.userHome / ".ivy2" / ".publicCredentials"),
+    PgpKeys.useGpg := true,
+    Keys.pomIncludeRepository := { _ => false },
+    Keys.licenses := Seq("MIT" -> url("https://opensource.org/licenses/MIT")),
+    Keys.homepage := Some(url("https://github.com/holidaycheck/amqp-akka-streams")),
+    Keys.scmInfo := Some(
+      ScmInfo(
+        browseUrl = url("https://github.com/holidaycheck/amqp-akka-streams"),
+        connection = "scm:git@github.com:holidaycheck/amqp-akka-streams.git"
+      )
+    ),
+    Keys.developers := List(
+      Developer(
+        id    = "mjakubowski84",
+        name  = "Marcin Jakubowski",
+        email = "marcin.jakubowski@holidaycheck.com",
+        url   = url("https://github.com/mjakubowski84")
+      )
+    ),
+    Keys.publishMavenStyle := true,
+    Keys.publishTo := Some(
+      if (isSnapshot.value)
+        Opts.resolver.sonatypeSnapshots
+      else
+        Opts.resolver.sonatypeStaging
+    ),
+    Keys.publishArtifact in Test := false,
+    Keys.publishArtifact in IntegrationTest := false
   )
   .settings(itSettings: _*)

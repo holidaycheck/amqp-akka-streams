@@ -1,7 +1,6 @@
 # amqp-akka-streams
 
 This library provides you Sinks and Sources that you can use for producing and consuming messages from AMQP queue.
-It is available both for Scala 2.11.x and 2.12.x.
 
 The utilities are grouped in class of `AmqpProducer` (for producing) and `AmqpConsumer` (for consuming) which share common
 trait called `AmqpContext`. The common context interface provides you access to resource handling, like ability to check
@@ -59,4 +58,10 @@ consumer.source.map { delivery =>
   consumer.shutdown() // closes the connection and cleanups the resources
 }
 
+```
+
+## How to add it to your project
+The library is available both for Scala 2.11.x and 2.12.x. All you have to do is to add the dependency:
+```scala
+"com.holidaycheck" %% "amqp-akka-streams" % "1.3.1"
 ```
