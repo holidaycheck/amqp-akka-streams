@@ -25,37 +25,35 @@ import akka.actor.ActorSystem
 
 trait EmbedAmqp {
 
-  implicit def system: ActorSystem
-  private val amqpExchangeName = "myExchange"
-  private val amqpRoutingKey = ""
-  private val ctx = new BaseAmqpContext(
-    AmqpConfiguration(
-      host = "localhost",
-      port = 19569,
-      virtualHost = "default",
-      username = "guest",
-      password = "password",
-      queueName = "test"
-    )
-  ){}
-  def configuration: AmqpConfiguration = ctx.configuration
+  protected implicit def system: ActorSystem
+  protected val amqpExchangeName = "myExchange"
+  protected val amqpRoutingKey = ""
+  protected val amqpQueueName = "myQueue"
+  protected val connectionConfiguration: AmqpConnection.Configuration = AmqpConnection.Configuration(
+    host = "localhost",
+    port = 19569,
+    virtualHost = "default",
+    username = "guest",
+    password = "password"
+  )
+  private val testConnection: AmqpConnection = AmqpConnection(connectionConfiguration)
 
   private lazy val broker = EmbeddedAmqpBroker()
 
   protected def startAmqp(): Unit = {
     broker
-    val channel = ctx.connection.createChannel()
+    val channel = testConnection.underlyingConnection.createChannel()
     try {
       channel.exchangeDeclare(amqpExchangeName, "fanout", true, false, null)
-      channel.queueDeclare(configuration.queueName, true, false, false, null)
-      channel.queueBind(configuration.queueName, amqpExchangeName, amqpRoutingKey)
+      channel.queueDeclare(amqpQueueName, true, false, false, null)
+      channel.queueBind(amqpQueueName, amqpExchangeName, amqpRoutingKey)
     } finally {
       channel.close()
     }
   }
 
   protected def publishMessage(msg: String): Unit = {
-    val channel = ctx.connection.createChannel()
+    val channel = testConnection.underlyingConnection.createChannel()
     try {
       channel.basicPublish(amqpExchangeName, amqpRoutingKey, null, msg.getBytes(StandardCharsets.UTF_8))
     } finally {
@@ -64,25 +62,25 @@ trait EmbedAmqp {
   }
 
   protected def readMessage(ack: Boolean): Option[String] = {
-    val channel = ctx.connection.createChannel()
+    val channel = testConnection.underlyingConnection.createChannel()
     try {
-      Option(channel.basicGet(configuration.queueName, ack)).map(_.getBody).map(new String(_, StandardCharsets.UTF_8))
+      Option(channel.basicGet(amqpQueueName, ack)).map(_.getBody).map(new String(_, StandardCharsets.UTF_8))
     } finally {
       channel.close()
     }
   }
 
   protected def messageCount: Long = {
-    val channel = ctx.connection.createChannel()
+    val channel = testConnection.underlyingConnection.createChannel()
     try {
-      channel.messageCount(configuration.queueName)
+      channel.messageCount(amqpQueueName)
     } finally {
       channel.close()
     }
   }
 
   protected def stopAmqp(): Unit = {
-    ctx.connection.close()
+    testConnection.underlyingConnection.close()
     broker.shutdownBroker()
   }
 

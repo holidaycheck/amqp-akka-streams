@@ -40,17 +40,10 @@ class AmqpPublisherSpec
 
   implicit val system: ActorSystem = ActorSystem()
 
-  def ctx(connectionArg: Connection) = new AmqpContext {
-    override val configuration: AmqpConfiguration = AmqpConfiguration(
-      host = "host",
-      port = 1,
-      virtualHost = "vh",
-      username = "user",
-      password = "password",
-      queueName = "queue"
-    )
-    override val isOpen: Boolean = true
-    override val connection: Connection = connectionArg
+  def amqpConnection(underlyingConnectionArg: Connection): AmqpConnection = new AmqpConnection {
+    override private[amqp] val underlyingConnection = underlyingConnectionArg
+    override private[amqp] def system = AmqpPublisherSpec.this.system
+    override def isOpen: Boolean = true
     override def shutdown(): Future[Unit] = Future.successful(())
   }
 
@@ -79,7 +72,7 @@ class AmqpPublisherSpec
     (channel.basicCancel _).when(*).returns(())
     (connection.createChannel _).when().returns(channel)
 
-    new AmqpPublisher(ctx(connection))
+    new AmqpPublisher("queue")(amqpConnection(connection))
   }
 
   override def createFailedPublisher(): Publisher[Delivery[ByteString]] = {
@@ -93,7 +86,7 @@ class AmqpPublisherSpec
       .throws(new RuntimeException("Creating consumer fails as expected"))
     (connection.createChannel _).when().returns(channel)
 
-    new AmqpPublisher(ctx(connection))
+    new AmqpPublisher("queue")(amqpConnection(connection))
   }
 
 }

@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.UnaryOperator
 
-import akka.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
+import akka.actor.{Actor, ActorRef, PoisonPill, Props}
 import akka.util.ByteString
 import com.rabbitmq.client.AMQP.BasicProperties
 import com.rabbitmq.client._
@@ -35,9 +35,8 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 
-private[amqp] class AmqpPublisher(amqpContext: AmqpContext)(implicit system: ActorSystem) extends Publisher[Delivery[ByteString]] {
-
-  private val queueName = amqpContext.configuration.queueName
+private[amqp] class AmqpPublisher(queueName: String)(implicit connection: AmqpConnection)
+  extends Publisher[Delivery[ByteString]] {
 
   private val prefetchCount = 16
 
@@ -45,12 +44,12 @@ private[amqp] class AmqpPublisher(amqpContext: AmqpContext)(implicit system: Act
 
   override def subscribe(subscriber: Subscriber[_ >: Delivery[ByteString]]): Unit = {
     try {
-      val channel = amqpContext.connection.createChannel()
+      val channel = connection.underlyingConnection.createChannel()
       channels.getAndUpdate(new UnaryOperator[Map[Int, Channel]] {
         override def apply(t: Map[Int, Channel]): Map[Int, Channel] = t.updated(channel.getChannelNumber, channel)
       })
 
-      val subscriptionActor = system.actorOf(SubscriptionActor.props)
+      val subscriptionActor = connection.system.actorOf(SubscriptionActor.props)
       val subscription = new AmqpActorSubscription(subscriptionActor, channel)
       val consumer = new AmqpActorConsumer(subscriptionActor, channel)
 

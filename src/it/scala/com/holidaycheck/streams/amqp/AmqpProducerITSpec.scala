@@ -27,7 +27,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
 
 
-class AmqpProducerSpec
+class AmqpProducerITSpec
   extends AsyncFlatSpec
     with EmbedAmqp
     with BeforeAndAfterAll
@@ -37,9 +37,8 @@ class AmqpProducerSpec
 
   override implicit val system: ActorSystem = ActorSystem()
   implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val connection: AmqpConnection = AmqpConnection(connectionConfiguration)
   implicit val stringMarshaller: AmqpProducer.PayloadMarshaller[String] = ByteString.apply(_)
-
-  val cut = AmqpProducer(configuration)
   val testMessage = "test message"
 
   override protected def beforeAll(): Unit = {
@@ -48,20 +47,30 @@ class AmqpProducerSpec
 
   override protected def afterAll(): Unit = {
     stopAmqp()
+    connection.shutdown()
     system.terminate().futureValue
   }
 
-  "Producer" should "send a message" in {
+  "Producer" should "send a message to a queue" in {
+    val cut = AmqpProducer(AmqpProducer.Configuration.publishToQueue(amqpQueueName))
     Source.single(testMessage).runWith(cut.sink).map { _ =>
       readMessage(true) shouldBe Some(testMessage)
     }
   }
 
-  it should "allow to shutdown the connection" in {
-    cut.shutdown()
-    recoverToSucceededIf[AlreadyClosedException] {
-      Source.single(testMessage).runWith(cut.sink)
+  it should "send a message to an exchange" in {
+    val cut = AmqpProducer(AmqpProducer.Configuration.publishToExchange(amqpExchangeName, amqpRoutingKey))
+    Source.single(testMessage).runWith(cut.sink).map { _ =>
+      readMessage(true) shouldBe Some(testMessage)
     }
+  }
+
+  it should "fail if connection is shutdown" in {
+    val cut = AmqpProducer(AmqpProducer.Configuration.publishToQueue(amqpQueueName))
+    for {
+      _ <- connection.shutdown()
+      assertion <- recoverToSucceededIf[AlreadyClosedException](Source.single(testMessage).runWith(cut.sink))
+    } yield assertion
   }
 
 }

@@ -18,17 +18,40 @@
 
 package com.holidaycheck.streams.amqp
 
-/**
-  * Represents consumed message delivery from AMQP broker
-  * @param body message body
-  * @param tag delivery tag given by AMQP broker
-  * @param channelNumber number of channel that delivery comes from
-  * @param headers delivery headers
-  * @tparam T type of body content
-  */
-case class Delivery[T](
-                     body: T,
-                     tag: Long,
-                     channelNumber: Int,
-                     headers: Map[String, AnyRef] = Map[String, AnyRef]()
-                   )
+import akka.actor.ActorSystem
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Matchers}
+
+import scala.concurrent.Future
+
+
+class AmqpConnectionITSpec
+  extends AsyncFlatSpec
+    with EmbedAmqp
+    with BeforeAndAfterAll
+    with ScalaFutures
+    with Matchers
+    with IntegrationPatience {
+
+  override implicit val system: ActorSystem = ActorSystem()
+
+  override protected def beforeAll(): Unit = {
+    startAmqp()
+  }
+
+  override protected def afterAll(): Unit = {
+    stopAmqp()
+    system.terminate().futureValue
+  }
+
+  "Connection" should "be able to connect and disconnect from the broker" in {
+    val cut = AmqpConnection(connectionConfiguration)
+    for {
+      open <- Future.successful(cut.isOpen)
+      if open
+      _ <- cut.shutdown()
+    } yield cut.isOpen should be(false)
+
+  }
+
+}

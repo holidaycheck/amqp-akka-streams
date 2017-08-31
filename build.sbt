@@ -31,7 +31,7 @@ lazy val root = (project in file("."))
   .settings(
     Keys.name := "amqp-akka-streams",
     Keys.organization := "com.holidaycheck",
-    Keys.version := "1.4.0",
+    Keys.version := "2.0.0",
     Keys.scalaVersion := "2.12.3",
     Keys.crossScalaVersions := Seq("2.11.8", "2.12.3"),
     Keys.scalacOptions ++= Seq("-deprecation", "-target:jvm-1.8"),

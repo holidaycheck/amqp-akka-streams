@@ -32,7 +32,7 @@ import scala.collection.immutable.Seq
 import scala.concurrent.Future
 
 
-class AmqpConsumerSpec
+class AmqpConsumerITSpec
   extends AsyncFlatSpec
     with EmbedAmqp
     with BeforeAndAfterAll
@@ -44,6 +44,9 @@ class AmqpConsumerSpec
   override implicit val system: ActorSystem = ActorSystem()
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   import system.dispatcher
+  val consumerConfiguration = AmqpConsumer.Configuration(amqpQueueName)
+
+  case class ExpectedException(delivery: Delivery[String]) extends RuntimeException(s"$delivery has failed as expected")
 
   override protected def beforeAll(): Unit = {
     startAmqp()
@@ -64,16 +67,17 @@ class AmqpConsumerSpec
     // given
     val testCount = 1000
     implicit val intUnmarshaller: AmqpConsumer.PayloadUnmarshaller[Int] = _.decodeString(StandardCharsets.UTF_8).toInt
-    val cut = AmqpConsumer(configuration)
+    implicit val connection: AmqpConnection = AmqpConnection(connectionConfiguration)
+    val cut = AmqpConsumer(consumerConfiguration)
 
     // when
     for (i <- 0 until testCount) publishMessage(i.toString)
-    val process: Future[Seq[Delivery[Int]]] = cut.source.alsoTo(cut.sink).runWith(Sink.seq)(materializer)
+    val process: Future[Seq[Delivery[Int]]] = cut.source.alsoTo(cut.sink).runWith(Sink.seq)
 
     // then
     for {
       _ <- eventuallyFut(messageCount should equal(0)) // wait until all messages are consumed
-      _ <- cut.shutdown() // close the stream
+      _ <- connection.shutdown() // close the stream
       result <- process // fetch the result
     } yield {
       val sequence = result.map(_.body)
@@ -88,7 +92,8 @@ class AmqpConsumerSpec
     val failingMessage = "I'm going to fail!"
     val succeedingMessage = "I'm OK!"
     implicit val stringUnmarshaller: AmqpConsumer.PayloadUnmarshaller[String] = _.decodeString(StandardCharsets.UTF_8)
-    val cut = AmqpConsumer(configuration)
+    implicit val connection: AmqpConnection = AmqpConnection(connectionConfiguration)
+    val cut = AmqpConsumer(consumerConfiguration)
 
     // when
     publishMessage(failingMessage)
@@ -96,7 +101,7 @@ class AmqpConsumerSpec
 
     // define graph
     val fail: Flow[Delivery[String], Delivery[String], NotUsed] = Flow.fromFunction { delivery =>
-      if (failFlag && delivery.body == failingMessage) throw new RuntimeException(s"$delivery has failed as expected")
+      if (failFlag && delivery.body == failingMessage) throw ExpectedException(delivery)
       else delivery
     }
     val graph: RunnableGraph[Future[Seq[String]]] =
@@ -104,10 +109,9 @@ class AmqpConsumerSpec
 
     // prepare assertions
     def firstRun() = for {
-      failed <- graph.run()(materializer).failed
-    } yield {
       // first run of the graph fails
-      failed shouldBe a[RuntimeException]
+      _ <- recoverToExceptionIf[ExpectedException](graph.run())
+    } yield {
       // failing message stayed at the queue, message processing stops at this one
       readMessage(ack = false) shouldBe Some(failingMessage)
     }
@@ -115,12 +119,12 @@ class AmqpConsumerSpec
     def switchFlag() = Future.successful(failFlag = false)
 
     def secondRun() = {
-      val process = graph.run()(materializer)
+      val process = graph.run()
       for {
         // wait until there's no message at the queue
         _ <- eventuallyFut(readMessage(ack = false) shouldBe None)
         // let's close the stream...
-        _ <- cut.shutdown()
+        _ <- connection.shutdown()
         // second run of the graph succeeds - graph recovers and messages are successfully processed
         result <- process
       } yield result should contain theSameElementsInOrderAs List(failingMessage, succeedingMessage)
@@ -134,12 +138,13 @@ class AmqpConsumerSpec
     } yield outcome
   }
 
-  it should "allow to shutdown the connection" in {
-    val cut = AmqpConsumer(configuration)
+  it should "fail to read if the connection is shutdown" in {
+    implicit val connection: AmqpConnection = AmqpConnection(connectionConfiguration)
+    val cut = AmqpConsumer(consumerConfiguration)
     for {
-      _ <- cut.shutdown()
-      exception <- cut.source.runWith(Sink.headOption)(materializer).failed
-    } yield exception shouldBe an[AlreadyClosedException]
+      _ <- connection.shutdown()
+      assertion <- recoverToSucceededIf[AlreadyClosedException](cut.source.runWith(Sink.headOption))
+    } yield assertion
   }
 
 }
