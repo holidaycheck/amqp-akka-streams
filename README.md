@@ -1,6 +1,8 @@
 # amqp-akka-streams
 
 This library provides you Sinks and Sources that you can use for producing and consuming messages from AMQP queue.
+It relies on [RabbitMQ Java Client](http://www.rabbitmq.com/java-client.html) in version 4.x but it should work
+flawlessly with any broker compliant with AMQP protocol in versions 0-9-1, 0-9 or 0-8.
 
 The utilities are grouped in class of `AmqpProducer` (for producing) and `AmqpConsumer` (for consuming) which share common
 trait called `AmqpContext`. The common context interface provides you access to resource handling, like ability to check

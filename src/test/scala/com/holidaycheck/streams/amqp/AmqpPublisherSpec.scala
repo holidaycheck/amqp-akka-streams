@@ -20,7 +20,8 @@ package com.holidaycheck.streams.amqp
 
 import akka.actor.ActorSystem
 import akka.util.ByteString
-import com.rabbitmq.client._
+import com.rabbitmq.client.{Channel, Connection, Consumer, Envelope}
+import com.rabbitmq.client.AMQP._
 import org.reactivestreams.Publisher
 import org.reactivestreams.tck.{PublisherVerification, TestEnvironment}
 import org.scalamock.scalatest.PathMockFactory
@@ -67,7 +68,7 @@ class AmqpPublisherSpec
             consumer.handleDelivery(
               consumerTag,
               new Envelope(i, false, "exchange", "routingKey"),
-              new AMQP.BasicProperties.Builder().build(),
+              new BasicProperties.Builder().build(),
               s"Message $i".getBytes
             )
           }
