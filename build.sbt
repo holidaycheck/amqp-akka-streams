@@ -9,7 +9,7 @@ lazy val itSettings = Defaults.itSettings ++ Project.inConfig(IntegrationTest)(S
 
 lazy val libraryDependencies = {
   val akkaVersion = "2.4.19"
-  val rabbitMqVersion = "3.6.5"
+  val rabbitMqVersion = "4.2.0"
   Seq(
     // akka
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
@@ -31,7 +31,7 @@ lazy val root = (project in file("."))
   .settings(
     Keys.name := "amqp-akka-streams",
     Keys.organization := "com.holidaycheck",
-    Keys.version := "1.3.1",
+    Keys.version := "1.4.0",
     Keys.scalaVersion := "2.12.3",
     Keys.crossScalaVersions := Seq("2.11.8", "2.12.3"),
     Keys.scalacOptions ++= Seq("-deprecation", "-target:jvm-1.8"),
