@@ -18,6 +18,8 @@
 
 package com.holidaycheck.streams.amqp
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.rabbitmq.client.{Channel, Connection, Consumer, Envelope}
@@ -25,20 +27,27 @@ import com.rabbitmq.client.AMQP._
 import org.reactivestreams.Publisher
 import org.reactivestreams.tck.{PublisherVerification, TestEnvironment}
 import org.scalamock.scalatest.PathMockFactory
-import org.scalatest.Matchers
+import org.scalatest.{BeforeAndAfterAll, Matchers}
 import org.scalatest.testng.TestNGSuiteLike
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.FiniteDuration
 
 
 class AmqpPublisherSpec
   extends PublisherVerification[Delivery[ByteString]](new TestEnvironment(500, true))
     with TestNGSuiteLike
     with Matchers
-    with PathMockFactory {
+    with PathMockFactory
+    with BeforeAndAfterAll {
 
   implicit val system: ActorSystem = ActorSystem()
+
+  override def afterAll(): Unit = {
+    super.afterAll()
+    Await.ready(system.terminate(), FiniteDuration(1, TimeUnit.SECONDS))
+  }
 
   def amqpConnection(underlyingConnectionArg: Connection): AmqpConnection = new AmqpConnection {
     override private[amqp] val underlyingConnection = underlyingConnectionArg

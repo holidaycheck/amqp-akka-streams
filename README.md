@@ -65,5 +65,5 @@ consumer.source.map { delivery =>
 ## How to add it to your project
 The library is available both for Scala 2.11.x and 2.12.x. All you have to do is to add the dependency:
 ```scala
-"com.holidaycheck" %% "amqp-akka-streams" % "1.3.1"
+"com.holidaycheck" %% "amqp-akka-streams" % "1.4.0"
 ```

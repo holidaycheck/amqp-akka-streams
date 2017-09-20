@@ -22,7 +22,7 @@ lazy val libraryDependencies = {
     "org.scalatest" %% "scalatest" % "3.0.3" % "test,it",
     "org.scalamock" %% "scalamock-scalatest-support" % "3.6.0" % "test",
     "org.reactivestreams" % "reactive-streams-tck" % "1.0.0" % "test",
-    "org.apache.qpid" % "qpid-broker" % "6.1.3" % "it"
+    "org.apache.qpid" % "qpid-broker" % "6.1.4" % "it"
   )
 }
 

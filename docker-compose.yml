@@ -1,0 +1,19 @@
+version: '2'
+services:
+  test:
+    image: hseeberger/scala-sbt:8u141-jdk_2.12.3_0.13.16
+    volumes:
+      - .:/source
+      - ~/.ivy2:/root/.ivy2
+    working_dir: /source
+    command: sbt clean compile test it:test
+  publish:
+      image: hseeberger/scala-sbt:8u141-jdk_2.12.3_0.13.16
+      depends_on:
+        - test
+      volumes:
+        - .:/source
+        - ~/.ivy2:/root/.ivy2
+        - ~/.sbt/gpg:/root/.sbt/gpg/
+      working_dir: /source
+      command: sbt '+ publishSigned' '+ sonatypeRelease'
