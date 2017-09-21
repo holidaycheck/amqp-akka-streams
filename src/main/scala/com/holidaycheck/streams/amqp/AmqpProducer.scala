@@ -26,14 +26,22 @@ import scala.concurrent.Future
 
 object AmqpProducer {
 
-  private[amqp] case class Configuration(exchangeName: String, routingKey: String)
+  trait Configuration {
+    def exchangeName: String
+    def routingKey: String
+  }
+
+  private[AmqpProducer] case class ConfigurationImpl(
+                                                      override val exchangeName: String,
+                                                      override val routingKey: String
+                                                    ) extends Configuration
 
   object Configuration {
     def publishToExchange(exchangeName: String, routingKey: String): Configuration =
-      Configuration(exchangeName, routingKey)
+      ConfigurationImpl(exchangeName, routingKey)
 
     def publishToQueue(queueName: String): Configuration =
-      Configuration("", queueName)
+      ConfigurationImpl("", queueName)
   }
 
   trait PayloadMarshaller[T] {
