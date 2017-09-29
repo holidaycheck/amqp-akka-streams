@@ -1,4 +1,7 @@
 import sbt._
+import sbt.io.Path
+import sbt.librarymanagement.{Developer, Resolver, ScmInfo}
+import sbt.librarymanagement.ivy.Credentials
 
 lazy val resolvers =  Seq(
   Opts.resolver.sonatypeReleases,
@@ -39,7 +42,10 @@ lazy val root = (project in file("."))
     Keys.resolvers := resolvers,
     Keys.concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
     Keys.libraryDependencies := libraryDependencies,
-    Keys.credentials += Credentials(Path.userHome / ".ivy2" / ".publicCredentials"),
+    Keys.credentials ++= Seq(
+      Credentials(Path.userHome / ".ivy2" / ".publicCredentials"),
+      Credentials(Path.userHome / ".sbt" / "pgp.credentials")
+    ),
     PgpKeys.useGpg := true,
     Keys.pomIncludeRepository := { _ => false },
     Keys.licenses := Seq("MIT" -> url("https://opensource.org/licenses/MIT")),
